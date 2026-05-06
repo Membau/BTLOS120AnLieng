@@ -64,8 +64,38 @@ struct pcb_t * get_mlq_proc(void) {
 	 *      It worth to protect by a mechanism.
 	 * */
 
+	int has_process = 0;
+    for (int i = 0; i < MAX_PRIO; i++) {
+        if (!empty(&mlq_ready_queue[i])) {
+            has_process = 1;
+            break;
+        }
+    }
+    if (!has_process) {
+        pthread_mutex_unlock(&queue_lock);
+        return NULL;
+    }
+    int found = 0;
+    while (!found) { 
+        for (int prio = 0; prio < MAX_PRIO; prio++) {
+            if (!empty(&mlq_ready_queue[prio]) && slot[prio] > 0) {
+                proc = dequeue(&mlq_ready_queue[prio]);
+                slot[prio]--;
+                found = 1;
+                break;
+            }
+        }
+        if (!found) {
+            for (int prio = 0; prio < MAX_PRIO; prio++) {
+                slot[prio] = MAX_PRIO - prio;
+            }
+        }
+    }
+
+
 	if (proc != NULL)
 		enqueue(&running_list, proc);
+	pthread_mutex_unlock(&queue_lock);
 	return proc;	
 }
 
@@ -78,7 +108,7 @@ void put_mlq_proc(struct pcb_t * proc) {
 	 *       It worth to protect by a mechanism.
 	 * 
 	 */
-
+	//?????	
 	pthread_mutex_lock(&queue_lock);
 	enqueue(&mlq_ready_queue[proc->prio], proc);
 	pthread_mutex_unlock(&queue_lock);
@@ -119,9 +149,14 @@ struct pcb_t * get_proc(void) {
 	 *       It worth to protect by a mechanism.
 	 * 
 	 */
-
+	prio = 0; prio < MAX_PRIO; prio++) {
+        if (!empty(&mlq_ready_queue[prio])) {
+            if (slot[prio] > 0) {
+                proc = dequeue(&mlq_ready_queue[prio]);
+            }
+        }
+    }
 	pthread_mutex_unlock(&queue_lock);
-
 	return proc;
 }
 
@@ -135,7 +170,8 @@ void put_proc(struct pcb_t * proc) {
 	 */
 
 	pthread_mutex_lock(&queue_lock);
-	enqueue(&run_queue, proc);
+	//enqueue(&run_queue, proc);
+	enqueue(&ready_queue, proc);
 	pthread_mutex_unlock(&queue_lock);
 }
 
