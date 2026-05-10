@@ -149,13 +149,7 @@ struct pcb_t * get_proc(void) {
 	 *       It worth to protect by a mechanism.
 	 * 
 	 */
-	prio = 0; prio < MAX_PRIO; prio++) {
-        if (!empty(&mlq_ready_queue[prio])) {
-            if (slot[prio] > 0) {
-                proc = dequeue(&mlq_ready_queue[prio]);
-            }
-        }
-    }
+	proc = dequeue(&ready_queue);
 	pthread_mutex_unlock(&queue_lock);
 	return proc;
 }

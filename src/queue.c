@@ -42,7 +42,7 @@ struct pcb_t *purgequeue(struct queue_t *q, struct pcb_t *proc)
 {
         /* TODO: remove a specific item from queue
          * */
-        if (q == NULL || proc == NULL | empty(q)) return NULL;
+        if (q == NULL || proc == NULL || empty(q)) return NULL;
         for (int i= 0; i < q->size; i++)
         {
                 if (q->proc[i] == proc )

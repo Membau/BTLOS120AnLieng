@@ -221,11 +221,24 @@ int vmap_pgd_memset(struct pcb_t *caller,           // process call
                     addr_t addr,                       // start address which is aligned to pagesz
                     int pgnum)                      // num of mapping page
 {
-  //int pgit = 0;
-  //uint64_t pattern = 0xdeadbeef;
+  int pgit = 0;
+  uint64_t pattern = 0xdeadbeef;
 
   /* TODO memset the page table with given pattern
    */
+  addr_t pgd, p4d, pud, pmd, pt;
+  for (pgit = 0; pgit < pgnum; pgit++) {
+      addr_t current_addr = addr + pgit * PAGING64_PAGESZ;
+      get_pd_from_address(current_addr, &pgd, &p4d, &pud, &pmd, &pt);
+      
+      if (caller && caller->krnl && caller->krnl->mm) {
+          caller->krnl->mm->pgd[pgd] = pattern;
+          caller->krnl->mm->p4d[p4d] = pattern;
+          caller->krnl->mm->pud[pud] = pattern;
+          caller->krnl->mm->pmd[pmd] = pattern;
+          caller->krnl->mm->pt[pt] = pattern;
+      }
+  }
 
   return 0;
 }
@@ -376,11 +389,11 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   struct vm_area_struct *vma0 = malloc(sizeof(struct vm_area_struct));
 
   /* TODO init page table directory */
-   //mm->pgd = ...
-   //mm->p4d = ...
-   //mm->pud = ...
-   //mm->pmd = ...
-   //mm->pt = ...
+   mm->pgd = malloc(512 * sizeof(addr_t));
+   mm->p4d = malloc(512 * sizeof(addr_t));
+   mm->pud = malloc(512 * sizeof(addr_t));
+   mm->pmd = malloc(512 * sizeof(addr_t));
+   mm->pt = malloc(512 * sizeof(addr_t));
 
 
   /* By default the owner comes with at least one vma */
@@ -392,13 +405,13 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
   enlist_vm_rg_node(&vma0->vm_freerg_list, first_rg);
 
   /* TODO update VMA0 next */
-  // vma0->next = ...
+  vma0->vm_next = NULL;
 
   /* Point vma owner backward */
-  //vma0->vm_mm = mm; 
+  vma0->vm_mm = mm; 
 
   /* TODO: update mmap */
-  //mm->mmap = ...
+  mm->mmap = vma0;
   //mm->symrgtbl = ...
   //mm->kcpooltbl
 
