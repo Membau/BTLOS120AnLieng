@@ -16,6 +16,7 @@
 #define MM_PAGING
 #define PAGING_MAX_MMSWP 4 /* max number of supported swapped space */
 #define PAGING_MAX_SYMTBL_SZ 30
+#define PAGING_MAX_KCPOOL 50
 
 /* 
  * @bksysnet: in long address mode of 64bit or original 32bit
@@ -86,6 +87,8 @@ struct vm_area_struct {
 struct kcache_pool_struct {
    int size;
    int align;
+   int slot_count;
+   char *slot_map;
 
 #ifdef MM64
    addr_t storage;
