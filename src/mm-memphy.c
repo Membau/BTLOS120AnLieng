@@ -50,7 +50,8 @@ int MEMPHY_seq_read(struct memphy_struct *mp, addr_t addr, BYTE *value)
    if (mp == NULL)
       return -1;
 
-   if (!mp->rdmflg)
+   /* FIX: reject random-access device, seq_read is only for sequential */
+   if (mp->rdmflg)
       return -1; /* Not compatible mode for sequential read */
 
    MEMPHY_mv_csr(mp, addr);
@@ -86,12 +87,12 @@ int MEMPHY_read(struct memphy_struct *mp, addr_t addr, BYTE *value)
  */
 int MEMPHY_seq_write(struct memphy_struct *mp, addr_t addr, BYTE value)
 {
-
    if (mp == NULL)
       return -1;
 
-   if (!mp->rdmflg)
-      return -1; /* Not compatible mode for sequential read */
+   /* FIX: reject random-access device, seq_write is only for sequential */
+   if (mp->rdmflg)
+      return -1; /* Not compatible mode for sequential write */
 
    MEMPHY_mv_csr(mp, addr);
    mp->storage[addr] = value;
@@ -163,7 +164,9 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, addr_t *retfpn)
    /* MEMPHY is iteratively used up until its exhausted
     * No garbage collector acting then it not been released
     */
-   free(fp);
+   /* FIX: move fp to used_fp_list for tracking instead of freeing it */
+   fp->fp_next = mp->used_fp_list;
+   mp->used_fp_list = fp;
 
    return 0;
 }
@@ -173,6 +176,16 @@ int MEMPHY_dump(struct memphy_struct *mp)
   /*TODO dump memphy contnt mp->storage
    *     for tracing the memory content
    */
+   if (mp == NULL || mp->storage == NULL)
+      return -1;
+
+   printf("\n--- Physical Memory Dump ---\n");
+   for (int i = 0; i < mp->maxsz; i++)
+   {
+      if (mp->storage[i] != 0)
+         printf("Addr 0x%08x: Value 0x%02x\n", i, mp->storage[i]);
+   }
+
    return 0;
 }
 
