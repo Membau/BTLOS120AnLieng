@@ -250,7 +250,7 @@ addr_t vmap_page_range(struct pcb_t *caller,           // process call
   /* Map each frame into the page table */
   for (pgit = 0; pgit < pgnum && fpit != NULL; pgit++)
   {
-    pgn = PAGING_PGN(addr + (pgit * PAGING64_PAGESZ));
+    pgn = PAGING_PGN((addr + (pgit * PAGING64_PAGESZ)));
 
     /* Write PTE: present, mapped to fpit->fpn */
     pte_set_fpn(caller, pgn, fpit->fpn);
