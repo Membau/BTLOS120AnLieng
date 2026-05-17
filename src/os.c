@@ -178,27 +178,34 @@ static void read_config(const char * path) {
 		malloc(sizeof(unsigned long) * num_processes);
 #ifdef MM_PAGING
 	int sit;
-#ifdef MM_FIXED_MEMSZ
-	/* We provide here a back compatible with legacy OS simulatiom config file
-         * In which, it have no addition config line for Mema, keep only one line
-	 * for legacy info 
-         *  [time slice] [N = Number of CPU] [M = Number of Processes to be run]
-         */
-        memramsz  =  0x100000000;
-        memswpsz[0] = 0x1000000;
-	for(sit = 1; sit < PAGING_MAX_MMSWP; sit++)
-		memswpsz[sit] = 0;
-#else
-	/* Read input config of memory size: MEMRAM and upto 4 MEMSWP (mem swap)
-	 * Format: (size=0 result non-used memswap, must have RAM and at least 1 SWAP)
-	 *        MEM_RAM_SZ MEM_SWP0_SZ MEM_SWP1_SZ MEM_SWP2_SZ MEM_SWP3_SZ
-	*/
-	fscanf(file, FORMAT_ARG "\n", &memramsz);
-	for(sit = 0; sit < PAGING_MAX_MMSWP; sit++)
-		fscanf(file, FORMAT_ARG, &(memswpsz[sit])); 
-
-       fscanf(file, "\n"); /* Final character */
-#endif
+	/* Auto-detect config format: peek at next line.
+	 * Memory line has 5 numbers: RAM SWP0 SWP1 SWP2 SWP3
+	 * Legacy process line has format: number string number
+	 * We read the line, try to parse 5 numbers; if that fails,
+	 * use defaults and rewind to re-read the line as process entry.
+	 */
+	char memline[200];
+	long saved_pos = ftell(file);
+	if (fgets(memline, sizeof(memline), file) != NULL) {
+		unsigned long v0, v1, v2, v3, v4;
+		if (sscanf(memline, "%lu %lu %lu %lu %lu", &v0, &v1, &v2, &v3, &v4) == 5) {
+			/* New format: memory sizes line present */
+			memramsz = v0;
+			memswpsz[0] = v1;
+			memswpsz[1] = v2;
+			memswpsz[2] = v3;
+			memswpsz[3] = v4;
+			for(sit = 4; sit < PAGING_MAX_MMSWP; sit++)
+				memswpsz[sit] = 0;
+		} else {
+			/* Legacy format: no memory line, use defaults and rewind */
+			memramsz = 0x100000000;
+			memswpsz[0] = 0x1000000;
+			for(sit = 1; sit < PAGING_MAX_MMSWP; sit++)
+				memswpsz[sit] = 0;
+			fseek(file, saved_pos, SEEK_SET);
+		}
+	}
 #endif
 
 #ifdef MLQ_SCHED

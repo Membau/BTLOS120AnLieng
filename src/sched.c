@@ -76,7 +76,7 @@ struct pcb_t * get_mlq_proc(void) {
         return NULL;
     }
     int found = 0;
-    while (!found) { 
+    while (!found) {
         for (int prio = 0; prio < MAX_PRIO; prio++) {
             if (!empty(&mlq_ready_queue[prio]) && slot[prio] > 0) {
                 proc = dequeue(&mlq_ready_queue[prio]);
@@ -86,9 +86,15 @@ struct pcb_t * get_mlq_proc(void) {
             }
         }
         if (!found) {
+            /* Check if all queues are now empty (processes may be on CPUs) */
+            int still_has = 0;
             for (int prio = 0; prio < MAX_PRIO; prio++) {
-                slot[prio] = MAX_PRIO - prio;
+                if (!empty(&mlq_ready_queue[prio])) { still_has = 1; break; }
             }
+            if (!still_has) break; /* Return NULL, let caller retry */
+            /* Reset slots and retry */
+            for (int prio = 0; prio < MAX_PRIO; prio++)
+                slot[prio] = MAX_PRIO - prio;
         }
     }
 
