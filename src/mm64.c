@@ -18,7 +18,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
-
+#include <string.h> 
 #if defined(MM64)
 
 /*
@@ -386,10 +386,10 @@ int init_mm(struct mm_struct *mm, struct pcb_t *caller)
 
   /* Init page table directory — allocate and zero all levels */
   mm->pgd = calloc(PAGING_MAX_PGN, sizeof(uint64_t));
-  mm->p4d = calloc(PAGING64_PD_SZ, sizeof(uint64_t));
-  mm->pud = calloc(PAGING64_PD_SZ, sizeof(uint64_t));
-  mm->pmd = calloc(PAGING64_PD_SZ, sizeof(uint64_t));
-  mm->pt  = calloc(PAGING64_PD_SZ, sizeof(uint64_t));
+  mm->p4d = calloc(512, sizeof(uint64_t));
+  mm->pud = calloc(512, sizeof(uint64_t));
+  mm->pmd = calloc(512, sizeof(uint64_t));
+  mm->pt  = calloc(512, sizeof(uint64_t));
 
   /* By default the owner comes with at least one vma */
   vma0->vm_id    = 0;
