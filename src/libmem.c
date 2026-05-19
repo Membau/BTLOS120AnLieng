@@ -224,42 +224,58 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
   uint32_t pte = pte_get_entry(caller, pgn);
 
-  if (!PAGING_PAGE_PRESENT(pte))
+  if (!PAGING_PAGE_PRESENT(pte) || (pte & PAGING_PTE_SWAPPED_MASK))
   { /* Page is not online, make it actively living */
     addr_t vicpgn, swpfpn;
-//  addr_t vicfpn;
-//  addr_t vicpte;
-//  struct sc_regs regs;
-
-    /* TODO Initialize the target frame storing our variable */
-//  addr_t tgtfpn 
+    addr_t tgtfpn;
 
     /* TODO: Play with your paging theory here */
-    /* Find victim page */
-    if (find_victim_page(caller->krnl->mm, &vicpgn) == -1)
+    int swptyp = GETVAL(pte, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT);
+    int swpoff = GETVAL(pte, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
+
+    if (MEMPHY_get_freefp(caller->krnl->mram, &tgtfpn) == 0)
     {
-      return -1;
+      /* We have a free frame in RAM */
+    }
+    else
+    {
+      /* Find victim page */
+      if (find_victim_page(caller->krnl->mm, &vicpgn) == -1)
+      {
+        return -1;
+      }
+
+      /* Get free frame in MEMSWP */
+      if (MEMPHY_get_freefp(caller->krnl->active_mswp, &swpfpn) == -1)
+      {
+        return -1;
+      }
+
+      /* TODO: Implement swap frame from MEMRAM to MEMSWP and vice versa*/
+      uint32_t vicpte = pte_get_entry(caller, vicpgn);
+      addr_t vicfpn = PAGING_FPN(vicpte);
+
+      /* TODO copy victim frame to swap 
+       * SWP(vicfpn <--> swpfpn)
+       * SYSCALL 1 sys_memmap
+       */
+      __swap_cp_page(caller->krnl->mram, vicfpn, caller->krnl->active_mswp, swpfpn);
+
+      /* Update page table */
+      pte_set_swap(caller, vicpgn, 0, swpfpn);
+
+      tgtfpn = vicfpn;
     }
 
-    /* Get free frame in MEMSWP */
-    if (MEMPHY_get_freefp(caller->krnl->active_mswp, &swpfpn) == -1)
+    /* If page was swapped out, bring it back */
+    if (pte != 0 && (pte & PAGING_PTE_SWAPPED_MASK))
     {
-      return -1;
+      __swap_cp_page(caller->krnl->active_mswp, swpoff, caller->krnl->mram, tgtfpn);
+      MEMPHY_put_freefp(caller->krnl->active_mswp, swpoff);
     }
-
-    /* TODO: Implement swap frame from MEMRAM to MEMSWP and vice versa*/
-
-    /* TODO copy victim frame to swap 
-     * SWP(vicfpn <--> swpfpn)
-     * SYSCALL 1 sys_memmap
-     */
-
-
-    /* Update page table */
-    //pte_set_swap(...);
 
     /* Update its online status of the target page */
-    //pte_set_fpn(...);
+    pte_set_fpn(caller, pgn, tgtfpn);
 
     enlist_pgn_node(&caller->krnl->mm->fifo_pgn, pgn);
   }
@@ -284,13 +300,15 @@ int pg_getval(struct mm_struct *mm, int addr, BYTE *data, struct pcb_t *caller)
   if (pg_getpage(mm, pgn, &fpn, caller) != 0)
     return -1; /* invalid page access */
 
-//int phyaddr = (fpn << PAGING_ADDR_FPN_LOBIT) + off;
+  int off = PAGING_OFFST(addr);
+  int phyaddr = (fpn << PAGING_ADDR_FPN_LOBIT) + off;
 
   /* TODO 
    *  MEMPHY_read(caller->krnl->mram, phyaddr, data);
    *  MEMPHY READ 
    *  SYSCALL 17 sys_memmap with SYSMEM_IO_READ
    */
+  MEMPHY_read(caller->krnl->mram, phyaddr, data);
 
   return 0;
 }
@@ -312,11 +330,15 @@ int pg_setval(struct mm_struct *mm, int addr, BYTE value, struct pcb_t *caller)
     return -1; /* invalid page access */
 
 
+  int off = PAGING_OFFST(addr);
+  int phyaddr = (fpn << PAGING_ADDR_FPN_LOBIT) + off;
+
   /* TODO 
    *  MEMPHY_write(caller->krnl->mram, phyaddr, value);
    *  MEMPHY WRITE with SYSMEM_IO_WRITE 
    * SYSCALL 17 sys_memmap
    */
+  MEMPHY_write(caller->krnl->mram, phyaddr, value);
 
   return 0;
 }
@@ -332,10 +354,12 @@ int pg_setval(struct mm_struct *mm, int addr, BYTE value, struct pcb_t *caller)
 int __read(struct pcb_t *caller, int vmaid, int rgid, addr_t offset, BYTE *data)
 {
   struct vm_rg_struct *currg = get_symrg_byid(caller->krnl->mm, rgid);
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->krnl->mm, vmaid);
 
-//struct vm_area_struct *cur_vma = get_vma_by_num(caller->krnl->mm, vmaid);
-
-  /* TODO Invalid memory identify */
+  if (currg == NULL || cur_vma == NULL) /* Invalid memory identify */
+  {
+    return -1;
+  }
 
   pg_getval(caller->krnl->mm, currg->rg_start + offset, data, caller);
 
@@ -563,7 +587,7 @@ int libkmem_copy_to_user(struct pcb_t *caller, uint32_t source, uint32_t destina
     __read_kernel_mem(caller, -1, source, offset + i, &data);
     __write_user_mem(caller, 0, destination, offset + i, data);
   }
-  return 1;
+  return 0;
 }
 
 
