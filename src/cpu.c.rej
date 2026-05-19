@@ -1,0 +1,10 @@
+--- src/cpu.c
++++ src/cpu.c
+@@ -70,6 +70,7 @@
+ struct inst_t ins = proc->code->text[proc->pc];
+ proc->pc++;
+ int stat = 1;
++printf("CPU running instruction opcode %d\n", ins.opcode);
+ switch (ins.opcode)
+ {
+ case CALC:
