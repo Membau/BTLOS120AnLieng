@@ -68,6 +68,7 @@ static void * cpu_routine(void * args) {
 			/* The porcess has finish it job */
 			printf("\tCPU %d: Processed %2d has finished\n",
 				id ,proc->pid);
+			remove_proc(proc);
 			free(proc);
 			proc = get_proc();
 			time_left = 0;
@@ -135,6 +136,15 @@ static void * ld_routine(void * args) {
 #endif
 	i=0;
 	printf("ld_routine\n");
+
+#ifdef MM_PAGING
+	os.mm = malloc(sizeof(struct mm_struct));
+	init_mm(os.mm, NULL);
+	os.mram = mram;
+	os.mswp = mswp;
+	os.active_mswp = active_mswp;
+#endif
+
 	while (i < num_processes) {
 		struct pcb_t * proc = load(ld_processes.path[i]);
 		struct krnl_t * krnl = proc->krnl = &os;	
@@ -146,11 +156,7 @@ static void * ld_routine(void * args) {
 			next_slot(timer_id);
 		}
 #ifdef MM_PAGING
-		krnl->mm = malloc(sizeof(struct mm_struct));
-		init_mm(krnl->mm, proc);
-		krnl->mram = mram;
-		krnl->mswp = mswp;
-		krnl->active_mswp = active_mswp;
+		// Memory structures are now globally initialized before the loop
 #endif
 		printf("\tLoaded a process at %s, PID: %d PRIO: %ld\n",
 			ld_processes.path[i], proc->pid, ld_processes.prio[i]);
