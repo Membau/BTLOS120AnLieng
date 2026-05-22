@@ -192,7 +192,7 @@ int liballoc(struct pcb_t *proc, addr_t size, uint32_t reg_index)
     return -1;
   }
 #ifdef IODUMP
-  /* TODO dump IO content (if needed) */
+  printf("[ALLOC] Region %d: addr=0x%08lx size=%lu\n", reg_index, addr, size);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
@@ -217,7 +217,7 @@ int libfree(struct pcb_t *proc, uint32_t reg_index)
   }
 
 #ifdef IODUMP
-  /* TODO dump IO content (if needed) */
+  printf("[FREE] Region %d freed\n", reg_index);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
@@ -381,7 +381,7 @@ int libread(
 
   *destination = data;
 #ifdef IODUMP
-  /* TODO dump IO content (if needed) */
+  printf("[READ] Region %d offset %ld: value=%d\n", source, offset, data);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
@@ -430,7 +430,7 @@ int libwrite(
     return -1;
   }
 #ifdef IODUMP
-  /* TODO dump IO content (if needed) */
+  printf("[WRITE] Region %d offset %ld: value=%d\n", destination, offset, data);
 #ifdef PAGETBL_DUMP
   print_pgtbl(proc, 0, -1); // print max TBL
 #endif
