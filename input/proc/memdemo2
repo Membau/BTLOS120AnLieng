@@ -1,0 +1,11 @@
+1 10
+alloc 300 0
+alloc 200 1
+alloc 100 2
+write 42 0 0
+write 77 1 0
+write 13 2 0
+read 0 0 3
+read 1 0 4
+free 1
+alloc 150 1
